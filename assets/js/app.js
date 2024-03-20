@@ -1,6 +1,6 @@
 const cl = console.log;
 
-const titlecontrol = document.getElementById("title");
+const titleControl = document.getElementById("title");
 const contentControl = document.getElementById("content");
 const userIdControl = document.getElementById("userId");
 const submitBtn = document.getElementById("submitBtn");
@@ -17,19 +17,55 @@ const hideLoader = () => {
     loader.classList.add("d-none");
 }
 
-const makeApiCall = async (methodName, apiUrl, msgBody) => {
-    msgInfo = msgBody ? JSON.stringify(msgBody) : null;
-    let res = await fetch(apiUrl,{
-        method : methodName,
-        body : msgInfo
-    })
-    return res.json();
-}
+const onDelete = async (ele) => {
+    Swal.fire({
+        title: "Are you sure you want to delete it?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Yes, delete it!"
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                let deleteId = ele.closest(".card").id;
+                let deleteUrl = `${baseUrl}/posts/${deleteId}.json`;
+                let res = await makeApiCall("DELETE", deleteUrl);
+                ele.closest(".card").remove();
+            } catch (err) {
+             cl(err)   
+            }finally{
+                hideLoader();
+            }
+          Swal.fire({
+            title: "Post is deleted Successfully!!!",
+            icon: "success",
+            timer: 3000
+          });
+        }
+      });
+    
+    }
 
-const fetchAll = async () => {
-    let res = await makeApiCall("GET", postUrl)
-    templatingOfCard(res)
-}
+
+    const onEdit = async (ele) => {
+        try {
+            let editId = ele.closest(".card").id;
+            let editUrl = `${baseUrl}/posts/${editId}.json`;
+            localStorage.setItem("editId",editId);
+            let res = await  makeApiCall("GET", editUrl);
+            titleControl.value = res.title;
+            contentControl.value = res.body;
+            userIdControl.value = res.userId;
+            submitBtn.classList.add("d-none");
+            updateBtn.classList.remove("d-none");
+        } catch (err) {
+         cl(err)   
+        }finally{
+            hideLoader();
+        }
+    }
+
 
 const templatingOfCard = (arr) => {
     cardContainer.innerHTML = arr.map(obj => {
@@ -51,35 +87,11 @@ const templatingOfCard = (arr) => {
     }).join("")
 }
 
-
-const onPostSubmit = async (eve) => {
-    eve.preventDefault();
-    try {
-        let newPost = {
-            title : titlecontrol.value,
-            body : contentControl.value,
-            userId : userIdControl.value
-        }
-        cl(newPost)
-        let res = await makeApiCall("POST", postUrl, newPost);
-        insertCard(newPost);
-        swal.fire({
-            title: "Post is submitted succesfully!",
-            icon: "success",
-            timer : 3000
-          });
-    } catch (err) {
-        cl(err)
-    }finally{
-        hideLoader()
-    }  
-}
-
 const insertCard = (obj) => {
     let card = document.createElement("div");
     card.className = "card mb-4";
     card.id = obj.id;
-    cardContainer.innerHTML = `
+    card.innerHTML = `
                         <div class="card-header">
                         <h4 class="m-0">${obj.title}</h4>
                         </div>
@@ -94,23 +106,76 @@ const insertCard = (obj) => {
                               cardContainer.append(card);
 }
 
+const makeApiCall = async (methodName, apiUrl, msgBody) => {
+    msgInfo = msgBody ? JSON.stringify(msgBody) : null;
+    let res = await fetch(apiUrl,{
+        method : methodName,
+        body : msgInfo
+    })
+    return res.json();
+}
+
+const fetchAll = async () => {
+    let res = await makeApiCall("GET", postUrl)
+    //cl(res)
+    templatingofCard(res)
+}
+fetchAll()
+
+
+// const fetchAll = async () => {
+//     let res = await makeApiCall("GET", postUrl)
+//     let postArr = [];
+//     for(let key in res){
+//       let obj = {...res[key],id:key};
+//        cl(obj);
+//        postArr.push(obj);
+//     }
+//     templatingOfCard(postArr);
+//  }
+
+const onPostSubmit = async (eve) => {
+    eve.preventDefault()
+    try {
+        let newPost = {
+            title : titleControl.value,
+            body : contentControl.value,
+            userId : userIdControl.value
+        }
+        //cl(newPost)
+        let res = await makeApiCall("POST", postUrl, newPost);
+        //newPost.id = res.id;
+        insertCard(newPost);
+        Swal.fire({
+            title: "Post is submitted succesfully!",
+            icon: "success",
+            timer : 3000
+          });
+    } catch (err) {
+        cl(err)
+    }finally{
+        hideLoader();
+        // postForm.reset();
+    }  
+}
+
 
 const onPostUpdate = async () => {
     try {
         let updatedObj = {
-            title : titlecontrol.value,
+            title : titleControl.value,
             body : contentControl.value,
             userId : userIdControl.value
         }
         cl(updatedObj)
         let updateId = localStorage.getItem("editId");
-        let updateUrl = `${baseUrl}/posts/${updateId}`;
-        let res = await  makeApiCall("PATCH", updateUrl, updatedObj);
+        let updateUrl = `${baseUrl}/posts/${updateId}.json`;
+        let res = await makeApiCall("PATCH", updateUrl, updatedObj);
         updatedObj.id = updateId;
         let card = [...document.getElementById(updatedObj.id).children];
         card[0].innerHTML = `<h4 class="m-0">${updatedObj.title}</h4>`;
         card[1].innerHTML = `<p class="m-0">${updatedObj.body}</p>`;
-        swal.fire({
+        Swal.fire({
             title: "Post is updated succesfully!",
             icon: "success",
             timer : 3000
@@ -119,60 +184,13 @@ const onPostUpdate = async () => {
         cl(err)
     }finally{
         hideLoader();
+        //loader.classList.add("d-none");
         postForm.reset();
         submitBtn.classList.remove("d-none");
         updateBtn.classList.add("d-none");
     }  
 }
 
-
-const onEdit = async (ele) => {
-    try {
-        let editId = ele.closest(".card").id;
-        let editUrl = `${baseUrl}/posts/${editId}`;
-        localStorage.setItem("editId",editId);
-        let res = await  makeApiCall("GET", editUrl);
-        titlecontrol.value = res.title;
-        contentControl.value = res.body;
-        userIdControl.value = res.userId;
-        submitBtn.classList.add("d-none");
-        updateBtn.classList.remove("d-none");
-    } catch (err) {
-     cl(err)   
-    }finally{
-        hideLoader();
-    }
-}
-
-const onDelete = async (ele) => {
-    Swal.fire({
-        title: "Are you sure you want to delete it?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText: "Yes, delete it!"
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                let deleteId = ele.closest(".card").id;
-                let deleteUrl = `${baseUrl}/posts/${deleteId}`;
-                let res = await makeApiCall("DELETE", deleteUrl);
-                ele.closest(".card").remove();
-            } catch (err) {
-             cl(err)   
-            }finally{
-                hideLoader();
-            }
-          Swal.fire({
-            title: "Deleted!",
-            text: "Your file has been deleted.",
-            icon: "success"
-          });
-        }
-      });
-    
-    }
 
 postForm.addEventListener("submit", onPostSubmit);
 updateBtn.addEventListener("click", onPostUpdate);
